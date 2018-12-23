@@ -1,4 +1,4 @@
-from bs4 import BeautifulSoup as bs
+from bs4 import BeautifulSoup as bs, ResultSet
 # import nltk
 from nltk.corpus import stopwords
 from nltk.tokenize import RegexpTokenizer
@@ -6,7 +6,6 @@ from nltk import pos_tag
 from nltk.stem import WordNetLemmatizer
 import os
 import sqlite3
-
 
 # import store.py
 # nltk.download('averaged_perceptron_tagger')
@@ -17,14 +16,14 @@ import sqlite3
 
 
 # connect to the database
-def store_address(doc_id, address):
+def forward_table(doc_id, address, header):
+    print(header)
     conn = sqlite3.connect("forward.db")
 
     # cursor to move around the database
     c = conn.cursor()
-
-    sql = "INSERT INTO 'forward' (doc_id, address) VALUES( ?, ?)"
-    c.execute(sql, (doc_id, address,))
+    sql = "INSERT INTO 'forward' (doc_id, address, heading) VALUES( ?, ?, ?)"
+    c.execute(sql, (doc_id, address, header,))
     conn.commit()
 
 
@@ -38,24 +37,25 @@ def store_words(doc_id, word_list):
         conn.commit()
 
 
-def get_docID(w):
+def get_doc_id(word_):
+
     conn = sqlite3.connect("forward.db")
 
     # cursor to move around the database
     c = conn.cursor()
 
-    c.execute("SELECT doc_id FROM words WHERE word LIKE ?", (w,))
+    c.execute("SELECT doc_id FROM words WHERE word = ?", (word_,))
     rows = c.fetchall()
     return rows
 
 
-def get_freq(w, d):
+def get_frequency(word_, doc_id_):
     conn = sqlite3.connect("forward.db")
 
     # cursor to move around the database
     c = conn.cursor()
 
-    c.execute("SELECT frequency FROM words WHERE word = ? AND doc_id = ?", (str(w), int(d),))
+    c.execute("SELECT frequency FROM words WHERE word = ? AND doc_id = ?", (word_, str(doc_id_),))
     rows = c.fetchall()
     return rows
 
@@ -67,27 +67,16 @@ def store_reverse_index(word_id, word, doc_id, frequency):
     c = conn.cursor()
 
     sql = "INSERT INTO 'reverse' (word_id, word, doc_id, frequency) VALUES( ?, ?, ?, ?)"
-    c.execute(sql, (word_id, word, doc_id, frequency,))
+    c.execute(sql, (word_id, word, doc_id, frequency,),)
     conn.commit()
 
 
-"""def reverse(m_unique):
-    conn = sqlite3.connect("forward.db")
-
-    c = conn.cursor()
-    for i in range(0, len(m_unique), 1):
-        sql_2 = "SELECT frequency, doc_id FROM 'words' WHERE word LIKE ?"
-        freq = c.execute(sql_2, (m_unique[i],))
-        sql_3 = "INSERT INTO 'reverse' (word, doc_id, frequency) VALUES( ?, ?, ?)"
-        c.execute(sql_3, (str(m_unique[i]), int(doc), int(freq),))
-        conn.commit()"""
-
 stop_words = set(stopwords.words('english'))  # sets stopwords
 
-file = r"C:\Users\Taha Abdullah\Desktop\art"
+file = r"C:\Users\Taha Abdullah\PycharmProjects\DSA\articles"
 
 doc_id = 0
-
+i = 0
 # forward = {'doc': doc_id, 'word_list': for_index}
 master_unique = []
 
@@ -111,6 +100,10 @@ for root, dirnames, filenames in os.walk(file):
                 sentence = soup.get_text()  # parses soup
                 sentence = sentence.lower()
 
+                headers = soup.find_all('h1')
+                h = [header.get_text() for header in headers]
+                h1 = h[0]
+                print(h)
                 tokenizer = RegexpTokenizer(r'\w+')  # sets punctuation
                 tokens = tokenizer.tokenize(sentence)  # separates string into list of words and removes punctuation
 
@@ -150,47 +143,25 @@ for root, dirnames, filenames in os.walk(file):
                 # print(forwardI)
 
                 store_words(doc_id, forwardI)
-                store_address(doc_id, fname)
+                forward_table(doc_id, fname, h1)
 
-        for i in range(0, len(unique), 1):
-            if unique[0] not in master_unique:
-                master_unique.append(unique[i])
+            for i in range(0, len(unique), 1):
+                if unique[i] not in master_unique:
+                    master_unique.append(unique[i])
 
-
+print(master_unique)
 # REVERSE INDEXER
 word_id = 0
-for i in range(0, len(master_unique), 1):
-    word_id +=1
-    doc_id_list = get_docID(master_unique[i])
-    for j in range(0, len(doc_id_list), 1):
-        frequency = get_freq(word, doc_id_list[j])
-        store_reverse_index(word_id, master_unique[i], doc_id_list[j], frequency)
+for i in master_unique:
+    x = get_doc_id(i)
+    for j in range(0, len(x), 1):
+        x[j] = x[j][0]
 
+    for k in range(0, len(x), 1):
+        frequency = get_frequency(i, x[k])
+        for m in range(0, len(frequency), 1):
+            frequency[m] = frequency[m][0]
+        print(frequency)
 
-"""seen = []
-                for_index = [[]]
-                for word in filtered_sentence:
-                    # print(word)
-                    count = 0
-                    for word2 in filtered_sentence:
-                        if word == word2:
-                            count += 1
-                        if word not in seen:
-                            for_index.append([word, count])
-                            seen.append(word)
-                    seen = []
-
-
-                for_index = for_index[1:]
-
-                print(for_index)
-
-                # store_address(doc_id, fname)
-                # store_words(doc_id, for_index)
-
-
-
-                    # print(for_index)
-
-                    # forward['doc'] = doc_id
-                    # forward['word_list'] = for_index"""
+        store_reverse_index(word_id, i, x[k], frequency[0])
+    word_id += 1
