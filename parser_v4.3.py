@@ -76,7 +76,6 @@ stop_words = set(stopwords.words('english'))  # sets stopwords
 file = r"C:\Users\Taha Abdullah\PycharmProjects\DSA\articles"
 
 doc_id = 0
-i = 0
 # forward = {'doc': doc_id, 'word_list': for_index}
 master_unique = []
 
@@ -85,7 +84,6 @@ for root, dirnames, filenames in os.walk(file):
         if filename.endswith('.html'):
             fname = os.path.join(root, filename)
             with open(fname, encoding='utf-8') as handle:
-
                 doc_id += 1
 
                 # opens file
@@ -94,7 +92,7 @@ for root, dirnames, filenames in os.walk(file):
                 soup = bs(handle, 'html.parser')  # makes soup
 
                 # allows for only text
-                for script in soup(["script", "style", "link", "meta"]):
+                for script in soup(["script", "style"]):
                     script.decompose()
 
                 sentence = soup.get_text()  # parses soup
@@ -102,7 +100,11 @@ for root, dirnames, filenames in os.walk(file):
 
                 headers = soup.find_all('h1')
                 h = [header.get_text() for header in headers]
-                h1 = h[0]
+                if h:
+                    h = h[0]
+                else:
+                    doc_id -= 1
+                    continue
                 print(h)
                 tokenizer = RegexpTokenizer(r'\w+')  # sets punctuation
                 tokens = tokenizer.tokenize(sentence)  # separates string into list of words and removes punctuation
@@ -143,7 +145,7 @@ for root, dirnames, filenames in os.walk(file):
                 # print(forwardI)
 
                 store_words(doc_id, forwardI)
-                forward_table(doc_id, fname, h1)
+                forward_table(doc_id, fname, h)
 
             for i in range(0, len(unique), 1):
                 if unique[i] not in master_unique:
